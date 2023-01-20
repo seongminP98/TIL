@@ -3,7 +3,9 @@ package characteristicsOfKotlin
 data class Person(
     val name: String,
     val age: Int
-)
+) {
+    lateinit var hobby: String
+}
 
 class Person2(
     val name: String,
