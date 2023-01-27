@@ -96,5 +96,4 @@ class BookController {
 - get(”/json-filter”).param(”fields”, “isbn, title”)로 요청 시 `isbn`, `title` 필드만 응답한다.
 
 참고
-
 [https://github.com/thefeeling/spring-code/tree/develop/spring-mvc-jacksonview](https://github.com/thefeeling/spring-code/tree/develop/spring-mvc-jacksonview)
