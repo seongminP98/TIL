@@ -20,6 +20,6 @@ class Calculator(
         if (operand == 0) {
             throw IllegalArgumentException("0으로 나눌 수 없습니다.")
         }
-        this.number /= number
+        this.number /= operand
     }
 }
