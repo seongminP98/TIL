@@ -1,0 +1,22 @@
+type Food {
+    id: ID
+    name: String
+    type: String
+    info: FoodInfo
+}
+
+type FoodInfo {
+    calorie: Int,
+    described: String
+}
+
+type Query {
+    getFood(name: String): Food # Controller에 @QueryMapping 메서드명과 같아야 합니다.
+    getFoods: [Food]
+}
+
+type Mutation {
+    save(name: String!, type: String, calorie: Int, described: String): Food # Controller에 @MutationMapping 메서드명과 같아야 합니다.
+}
+
+
