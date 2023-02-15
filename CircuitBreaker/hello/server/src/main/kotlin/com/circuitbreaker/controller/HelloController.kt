@@ -22,4 +22,22 @@ class HelloController(
         log.info("server timeout")
         return helloService.timeout()
     }
+
+    @GetMapping("/test")
+    fun test(): String {
+        log.info("server test")
+        return helloService.failOrTimeout()
+    }
+
+    @GetMapping("/success")
+    fun success(): String {
+        log.info("server success")
+        return helloService.success()
+    }
+
+    @GetMapping("/slowErrorOrSuccess")
+    fun slowErrorOrSuccess(): String {
+        helloService.slowErrorOrSuccess()
+        return "fail"
+    }
 }
