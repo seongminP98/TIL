@@ -57,4 +57,4 @@ management:
       enabled: true # actuator 를 통해 circuitbreaker 상태를 확인
 
 api:
-  request-url: http://localhost:8090
+  request-url: http://localhost:9090

@@ -54,8 +54,6 @@ class Resilience4jCircuitBreakerTest {
             .build()
         circuitBreaker = CircuitBreaker.of("backendA", circuitBreakerConfig)
 
-//        val circuitBreakerRegistry = CircuitBreakerRegistry.ofDefaults()
-//        circuitBreaker = circuitBreakerRegistry.circuitBreaker("backendA")
     }
 
     @Test
@@ -96,11 +94,6 @@ class Resilience4jCircuitBreakerTest {
     }
 
 
-    @io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker(name = "backendA", fallbackMethod = "helloFallback")
-    fun restTemplateRequest() {
-
-    }
-
     @Test
     fun `서버가 일부 실패할 때 CircuitBreaker가 작동하여 일부 요청이 실패해야 한다`() {
         // Given
@@ -119,7 +112,7 @@ class Resilience4jCircuitBreakerTest {
         }
 
         mockServer.expect(
-            ExpectedCount.times(2),
+            ExpectedCount.times(11),
             MockRestRequestMatchers.requestTo("/api/some-resource")
         )
             .andExpect(MockRestRequestMatchers.method(HttpMethod.GET))
@@ -127,9 +120,8 @@ class Resilience4jCircuitBreakerTest {
 
         // When
         val results = mutableListOf<String?>()
-        val totalRequests = 5
 
-        for (i in 1..totalRequests) {
+        for (i in 1..11) {
             val result = try {
                 circuitBreaker.executeSupplier {
                     restTemplate.getForObject("/api/some-resource", String::class.java)
@@ -143,15 +135,9 @@ class Resilience4jCircuitBreakerTest {
             results.add(result)
         }
 
-//
-//        for (i in 1..totalRequests) {
-//            results.add(circuitBreaker.executeSupplier {
-//                restTemplate.getForObject("/api/some-resource", String::class.java)
-//            })
-//        }
+        mockServer.verify()
 
         // Then
-        assertEquals(totalRequests, results.count { it == "Fail" })
-//        mockServer.verify()
+        assertEquals(11, results.count { it == "Fail" })
     }
 }

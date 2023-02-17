@@ -35,14 +35,11 @@ class HelloController(
         return helloService.success()
     }
 
-    //    @GetMapping("/alwaysFail")
-//    fun alwaysFail(): Mono<String> {
-//        return helloService.alwaysFail()
-//    }
     @GetMapping("/alwaysFail")
     fun alwaysFail(): String {
 
-        return helloService.alwaysFailRestTemplate()
+        helloService.alwaysFailRestTemplate("zzz")
+        return "alywasFail"
     }
 
     @GetMapping("/alwaysFail2")

@@ -3,25 +3,21 @@ package com.circuitbreaker.service
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.boot.web.client.RestTemplateBuilder
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpMethod
 import org.springframework.http.MediaType
 import org.springframework.stereotype.Service
 import org.springframework.web.client.RestTemplate
 import org.springframework.web.reactive.function.client.WebClient
-import org.springframework.web.reactive.function.client.bodyToMono
 import reactor.core.publisher.Mono
 import java.time.Duration
-import java.util.concurrent.CompletableFuture
 import kotlin.RuntimeException
-import kotlin.random.Random
 
 @Service
 class HelloService(
+    private val restTemplate: RestTemplate,
     private val circuitBreakerRegistry: CircuitBreakerRegistry,
     @Value("\${api.request-url}") private val url: String,
 ) {
@@ -34,21 +30,15 @@ class HelloService(
         .permittedNumberOfCallsInHalfOpenState(1)
         .build()
     val circuitBreaker = io.github.resilience4j.circuitbreaker.CircuitBreaker.of("testA", circuitBreakerConfig)
-    val circuitBreakerBackendA = io.github.resilience4j.circuitbreaker.CircuitBreaker.ofDefaults("backendA")
+    val circuitBreakerBackendA = io.github.resilience4j.circuitbreaker.CircuitBreaker.of("backendA", circuitBreakerConfig)
 
     val client = WebClient.builder()
-        .baseUrl("http://localhost:8090")
+        .baseUrl(url)
         .defaultHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-        .build()
-
-    val restTemplate: RestTemplate = RestTemplateBuilder()
-        .setConnectTimeout(Duration.ofSeconds(3))
-        .setReadTimeout(Duration.ofSeconds(5))
         .build()
     val headers = HttpHeaders().add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
 
     @CircuitBreaker(name = "backendA", fallbackMethod = "helloFallback")
-//    @CircuitBreaker(name = "backendA")
     fun fail(): Mono<String> {
         return client.get()
             .uri("/fail")
@@ -56,7 +46,6 @@ class HelloService(
             .bodyToMono(String::class.java)
     }
 
-    //    @TimeLimiter(name = "backendA", fallbackMethod = "timeoutFallback")
     @CircuitBreaker(name = "backendA", fallbackMethod = "helloFallback")
     fun timeout(): Mono<String> {
         return client.get()
@@ -65,7 +54,6 @@ class HelloService(
             .bodyToMono(String::class.java)
     }
 
-    //    @CircuitBreaker(name = "backendA", fallbackMethod = "helloFallback")
     @CircuitBreaker(name = "backendA", fallbackMethod = "timeoutFallback")
     fun test(): Mono<String> {
         return client.get()
@@ -96,22 +84,23 @@ class HelloService(
             .onErrorMap { e -> log.error(e.message); e }
     }
 
-    @CircuitBreaker(name = "backendA", fallbackMethod = "restTemplateFallback")
-    fun alwaysFailRestTemplate(): String {
-        println("url = $url")
-        val result = restTemplate.exchange("http://localhost:8090/alwaysFail", HttpMethod.GET, null, String::class.java)
-        log.info("result = {}", result)
-        log.info("result.body = {}", result.body)
-        return result.body.toString()
+    @CircuitBreaker(name = "backendA", fallbackMethod = "alwaysFailRestTemplateFallback")
+    fun alwaysFailRestTemplate(id: String) {
+        restTemplate.exchange("$url/alwaysFail", HttpMethod.GET, null, String::class.java)
     }
 
-    @CircuitBreaker(name = "backendB", fallbackMethod = "restTemplateFallback")
+    private fun alwaysFailRestTemplateFallback(t: Throwable) {
+        println("fallback t = $t")
+        throw RuntimeException("fall back 호출")
+//        return resData("resData", 30)
+    }
+
+    @CircuitBreaker(name = "backendB")
     fun alwaysFailRestTemplate2(): String {
-
-
         try {
             log.info("try 블록 안")
-            val result = restTemplate.exchange("http://localhost:8090/alwaysFail", HttpMethod.GET, null, String::class.java)
+            val result =
+                restTemplate.exchange("http://localhost:8090/alwaysFail", HttpMethod.GET, null, String::class.java)
             log.info("result = {}", result)
             log.info("result.body = {}", result.body)
             return result.body.toString()

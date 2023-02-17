@@ -40,4 +40,8 @@ class HelloController(
         helloService.slowErrorOrSuccess()
         return "fail"
     }
+    @GetMapping("/alwaysFail")
+    fun alwaysFail() {
+        throw RuntimeException("failed")
+    }
 }
