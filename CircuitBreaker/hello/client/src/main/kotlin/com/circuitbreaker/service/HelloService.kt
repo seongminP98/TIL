@@ -1,5 +1,6 @@
 package com.circuitbreaker.service
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker
@@ -30,7 +31,7 @@ class HelloService(
         .permittedNumberOfCallsInHalfOpenState(1)
         .build()
     val circuitBreaker = io.github.resilience4j.circuitbreaker.CircuitBreaker.of("testA", circuitBreakerConfig)
-    val circuitBreakerBackendA = io.github.resilience4j.circuitbreaker.CircuitBreaker.of("backendA", circuitBreakerConfig)
+    val circuitBreakerBackendA = circuitBreakerRegistry.circuitBreaker("backendA")
 
     val client = WebClient.builder()
         .baseUrl(url)
@@ -54,9 +55,10 @@ class HelloService(
             .bodyToMono(String::class.java)
     }
 
-    @CircuitBreaker(name = "backendA", fallbackMethod = "timeoutFallback")
+    @CircuitBreaker(name = "backendA", fallbackMethod = "testFallback")
     fun test(): Mono<String> {
-        return client.get()
+        return client
+            .get()
             .uri("/test")
             .retrieve()
             .bodyToMono(String::class.java)
@@ -64,6 +66,14 @@ class HelloService(
                 log.error("error message = {}", it.message)
                 Mono.empty()
             }
+    }
+
+    private fun testFallback(t: Throwable): Mono<String> {
+        return Mono.just("fallback invoked! exception type : ${t.javaClass}")
+    }
+
+    private fun testFallback(e: CallNotPermittedException): Mono<String> {
+        return Mono.just("circuit-breaker open fallback invoked! exception type : ${e.javaClass}")
     }
 
     @CircuitBreaker(name = "backendA", fallbackMethod = "helloFallback")
@@ -85,15 +95,36 @@ class HelloService(
     }
 
     @CircuitBreaker(name = "backendA", fallbackMethod = "alwaysFailRestTemplateFallback")
-    fun alwaysFailRestTemplate(id: String) {
-        restTemplate.exchange("$url/alwaysFail", HttpMethod.GET, null, String::class.java)
+    fun alwaysFailRestTemplate(id: String): String {
+        println("alwaysFail call")
+        return restTemplate.exchange("$url/alwaysFail", HttpMethod.GET, null, String::class.java).body.toString()
     }
 
-    private fun alwaysFailRestTemplateFallback(t: Throwable) {
-        println("fallback t = $t")
-        throw RuntimeException("fall back 호출")
-//        return resData("resData", 30)
+    private fun alwaysFailRestTemplateFallback(e: CallNotPermittedException): String {
+        println("fallback callNotPermittedException = $e")
+        return "fallback invoked! CallNotPermittedException circuit state = ${circuitBreakerBackendA.state} exception type: ${e.javaClass}"
     }
+
+    private fun alwaysFailRestTemplateFallback(t: Throwable): String {
+        println("fallback t = $t")
+        return "fallback invoked! Throwable  circuit state = ${circuitBreakerBackendA.state} exception type: ${t.javaClass}"
+    }
+
+    @CircuitBreaker(name = "backendA", fallbackMethod = "getDataFallback")
+    fun getData(): String {
+        return restTemplate.exchange("$url/getData", HttpMethod.GET, null, String::class.java).body.toString()
+    }
+
+    private fun getDataFallback(e: CallNotPermittedException): String {
+        log.warn("fallback invoked! exception type: ${e.javaClass}")
+        throw RuntimeException("Fallback call CircuitBreaker open, message = ${e.message}", e.cause)
+    }
+
+    private fun getDataFallback(t: Throwable): String {
+        log.warn("fallback invoked! exception type: ${t.javaClass}")
+        throw RuntimeException("message = ${t.message}", t.cause)
+    }
+
 
     @CircuitBreaker(name = "backendB")
     fun alwaysFailRestTemplate2(): String {
@@ -121,8 +152,5 @@ class HelloService(
         return "fallback invoked! exception type: ${t.javaClass}"
     }
 
-    private fun timeoutFallback(t: Throwable): Mono<String> {
 
-        return Mono.just("timeout fallback invoked! exception type : ${t.javaClass}")
-    }
 }

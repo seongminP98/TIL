@@ -38,8 +38,7 @@ class HelloController(
     @GetMapping("/alwaysFail")
     fun alwaysFail(): String {
 
-        helloService.alwaysFailRestTemplate("zzz")
-        return "alywasFail"
+        return helloService.alwaysFailRestTemplate("zzz")
     }
 
     @GetMapping("/alwaysFail2")
